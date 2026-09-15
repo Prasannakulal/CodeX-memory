@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { chunkText } from "../src/chunker.js";
 import { embedText } from "../src/embedder.js";
 import db from "../src/database.js";
+import config from "../src/config.js";
 
-const docsDirectory = "./docs";
+const docsDirectory = config.docs.dir;
 
 const files = await readdir(docsDirectory);
 

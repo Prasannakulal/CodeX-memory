@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* http://127.0.0.1:*; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* http://127.0.0.1:* ws:;">
+  <title>CodexMemory — Local MCP RAG Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo">CODEX<span>//</span>MEMORY</div>
+        <div class="tagline">LOCAL MCP VECTOR RAG CONTROL CENTER</div>
+      </div>
+      <div class="engine-status" id="engineStatus">
+        <div class="status-pill" id="pillRedis"><span class="indicator"></span> REDIS: <span class="val">CHECKING</span></div>
+        <div class="status-pill" id="pillOllama"><span class="indicator"></span> OLLAMA: <span class="val">CHECKING</span></div>
+        <div class="status-pill" id="pillMcp"><span class="indicator"></span> MCP: <span class="val">PORT 3001</span></div>
+        <button class="btn btn-sm btn-primary" id="btnEngineToggle" title="Start or Stop all background services">▶ START ENGINE</button>
+        <button class="btn btn-sm btn-outline" id="btnReindexAll" title="Re-ingest all documents">REINDEX ALL</button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="main-grid">
+      <!-- Left Column: Ingestion (Quick Note + Drop Zone) -->
+      <section class="column">
+        <!-- Quick Note Card -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>QUICK NOTE INGESTION</h2>
+            <span class="panel-badge">AUTO-INDEX</span>
+          </div>
+          <p class="panel-desc">Type or paste text directly. It will be saved into <code>docs/</code> and indexed into LanceDB.</p>
+          <form id="quickNoteForm" class="note-form">
+            <div class="form-group">
+              <label for="noteTitle">NOTE TITLE</label>
+              <input type="text" id="noteTitle" placeholder="e.g. system-architecture" required autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label for="noteContent">MARKDOWN CONTENT</label>
+              <textarea id="noteContent" rows="7" placeholder="Write or paste your markdown notes here..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btnSaveNote">SAVE & INDEX DOCUMENT</button>
+          </form>
+          <div id="noteFeedback" class="feedback-msg"></div>
+        </div>
+
+        <!-- Drag & Drop Upload Card -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>FILE UPLOAD</h2>
+            <span class="panel-badge">DRAG & DROP</span>
+          </div>
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept=".md,.txt,.markdown" multiple style="display: none;" />
+            <div class="drop-icon">↓</div>
+            <div class="drop-title">DRAG & DROP FILES HERE</div>
+            <div class="drop-sub">or click to browse (.md, .txt)</div>
+          </div>
+          <div id="uploadFeedback" class="feedback-msg"></div>
+        </div>
+
+        <!-- 1-Click MCP Connect Card -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>MCP CLIENT SETUP</h2>
+            <span class="panel-badge">1-CLICK COPY</span>
+          </div>
+          <p class="panel-desc">Paste this configuration into your client to connect to this server:</p>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tabVscode">VS CODE</button>
+            <button class="tab-btn" data-tab="tabClaude">CLAUDE DESKTOP</button>
+          </div>
+          <div class="tab-content active" id="tabVscode">
+            <div class="code-box">
+              <button class="copy-btn" id="copyVscodeBtn">COPY</button>
+              <pre><code id="codeVscode">{
+  "servers": {
+    "codex-memory": {
+      "type": "http",
+      "url": "http://127.0.0.1:3001/mcp"
+    }
+  }
+}</code></pre>
+            </div>
+            <span class="code-hint">File path: <code>.vscode/mcp.json</code> or VS Code User <code>settings.json</code></span>
+          </div>
+          <div class="tab-content" id="tabClaude">
+            <div class="code-box">
+              <button class="copy-btn" id="copyClaudeBtn">COPY</button>
+              <pre><code id="codeClaude">{
+  "mcpServers": {
+    "codex-memory": {
+      "command": "node",
+      "args": ["/Users/prasannakulal/Desktop/codex-memory/src/server.js", "--stdio"]
+    }
+  }
+}</code></pre>
+            </div>
+            <span class="code-hint">File: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Vector Search Sandbox & Knowledge Library -->
+      <section class="column">
+        <!-- Live Search Sandbox Card -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>VECTOR SEARCH PLAYGROUND</h2>
+            <span class="panel-badge">SEMANTIC RAG</span>
+          </div>
+          <p class="panel-desc">Test how the AI assistant searches your vector embeddings in real time.</p>
+          <form id="searchForm" class="search-form">
+            <div class="search-row">
+              <input type="text" id="searchQuery" placeholder="Enter query (e.g. 'What projects has Prasanna worked on?')" required autocomplete="off" />
+              <div class="topk-wrapper">
+                <label for="topK">TOP-K</label>
+                <input type="number" id="topK" value="4" min="1" max="10" />
+              </div>
+              <button type="submit" class="btn btn-primary" id="btnSearch">SEARCH</button>
+            </div>
+          </form>
+
+          <div id="searchResults" class="results-container">
+            <div class="empty-state">No search performed yet. Type a query above to test vector retrieval.</div>
+          </div>
+        </div>
+
+        <!-- Knowledge Library Table -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>INDEXED KNOWLEDGE BASE</h2>
+            <span class="panel-badge" id="docCountBadge">0 DOCS</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="doc-table">
+              <thead>
+                <tr>
+                  <th>FILE NAME</th>
+                  <th>SIZE</th>
+                  <th>CHUNKS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="docTableBody">
+                <tr><td colspan="4" class="empty-cell">Loading documents...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Knowledge Graph Explorer Panel (GraphRAG) -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>KNOWLEDGE GRAPH (GRAPHRAG)</h2>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span class="panel-badge" id="graphEntityCountBadge">0 ENTITIES</span>
+              <span class="panel-badge" id="graphRelCountBadge">0 RELATIONS</span>
+              <select id="graphSourceFilter" style="font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; background: #000; color: #fff; border: 1px solid #000; padding: 3px 8px; cursor: pointer; text-transform: uppercase;">
+                <option value="all">All Documents</option>
+              </select>
+              <button class="btn btn-sm btn-outline graph-tab-btn active" id="tabBtnTable" data-tab="table">TABLE</button>
+              <button class="btn btn-sm btn-outline graph-tab-btn" id="tabBtnCanvas" data-tab="canvas">GRAPH VIEW</button>
+            </div>
+          </div>
+          <p class="panel-desc">Entities and relationships extracted from all ingested documents.</p>
+
+          <!-- Table View -->
+          <div id="graphViewTable">
+            <div class="table-wrapper">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>ENTITY NAME</th>
+                    <th>TYPE</th>
+                    <th>SOURCE DOCUMENT</th>
+                  </tr>
+                </thead>
+                <tbody id="graphTableBody">
+                  <tr><td colspan="3" class="empty-cell">Loading knowledge graph...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Canvas Graph View -->
+          <div id="graphViewCanvas" style="display:none;">
+            <div class="graph-canvas-toolbar">
+              <button class="btn btn-sm btn-outline" id="graphBtnZoomIn">＋ ZOOM IN</button>
+              <button class="btn btn-sm btn-outline" id="graphBtnZoomOut">− ZOOM OUT</button>
+              <button class="btn btn-sm btn-outline" id="graphBtnRotateCCW">↺ ROTATE</button>
+              <button class="btn btn-sm btn-outline" id="graphBtnRotateCW">↻ ROTATE</button>
+              <button class="btn btn-sm btn-outline" id="graphBtnReset">⊡ RESET VIEW</button>
+              <span class="graph-canvas-hint">DRAG nodes · SCROLL zoom · SHIFT+DRAG rotate</span>
+            </div>
+            <canvas id="graphCanvas" class="graph-canvas"></canvas>
+            <div id="graphNodeTooltip" class="graph-tooltip" style="display:none;"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-left">CodexMemory v1.0.0 &bull; Local-First RAG &bull; Zero Cloud Telemetry</div>
+      <div class="footer-right">Streamable HTTP Transport: <code>http://127.0.0.1:3001/mcp</code></div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

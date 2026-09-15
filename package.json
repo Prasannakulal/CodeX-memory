@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node scripts/dev.js",
+    "start:app": "electron electron/main.js",
+    "start:mcp": "node src/server.js",
+    "start:mcp:stdio": "node src/server.js --stdio",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +17,16 @@
   "dependencies": {
     "@lancedb/lancedb": "^0.22.3",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "bullmq": "^6.3.4",
+    "chokidar": "^5.0.0",
+    "express": "^5.2.1",
+    "ioredis": "^6.0.0",
+    "kuzu": "^0.11.3",
+    "pino": "^10.3.1",
+    "prom-client": "^15.1.3",
     "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "electron": "^44.3.0"
   }
 }

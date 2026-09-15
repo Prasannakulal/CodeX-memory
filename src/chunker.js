@@ -12,6 +12,10 @@ export function chunkText(text, chunkSize = 500, overlap = 50) {
 
     chunks.push(chunk);
 
+    if (end >= words.length) {
+      break;
+    }
+
     start += chunkSize - overlap;
   }
 

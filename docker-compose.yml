@@ -1,0 +1,81 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: codexmemory-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  codexmemory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codexmemory-app
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - DOCS_DIR=/app/docs
+      - LANCEDB_PATH=/app/data/lancedb
+      - METRICS_PORT=9090
+      - MCP_PORT=3001
+      - MCP_HOST=0.0.0.0
+      - WORKER_CONCURRENCY=1
+      - LOG_LEVEL=info
+    ports:
+      # Streamable HTTP MCP server for VS Code and AI clients
+      - "3001:3001"
+      # Prometheus metrics endpoint
+      - "9090:9090"
+    volumes:
+      # Live document sync from host docs folder
+      - ./docs:/app/docs
+      # Persistent LanceDB vector database
+      - ./data/lancedb:/app/data/lancedb
+    extra_hosts:
+      # Reach host-native Ollama instance at host.docker.internal:11434
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: codexmemory-prometheus
+    restart: unless-stopped
+    ports:
+      # Map container 9090 to host port 9091 to avoid collision with CodexMemory metrics server on 9090
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: codexmemory-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  redis_data:

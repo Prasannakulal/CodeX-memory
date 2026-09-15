@@ -1,11 +1,8 @@
 {
   "servers": {
     "codex-memory": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "${workspaceFolder}/src/server.js"
-      ]
+      "type": "http",
+      "url": "http://127.0.0.1:3001/mcp"
     }
   }
 }

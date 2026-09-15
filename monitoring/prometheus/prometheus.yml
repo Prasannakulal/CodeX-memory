@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "codexmemory"
+    metrics_path: "/metrics"
+    static_configs:
+      # Scrapes containerized app on the Docker network, with host.docker.internal fallback for native runs
+      - targets: ["codexmemory:9090", "host.docker.internal:9090"]
+        labels:
+          app: "codexmemory"
