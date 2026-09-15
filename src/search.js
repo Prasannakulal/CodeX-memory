@@ -195,10 +195,18 @@ export async function searchDocuments(query, topK = 5) {
     }
   }
 
-  // 7. Retrieve Knowledge Graph context from JSON snapshot (no native addon in server)
+  // 7. Retrieve Knowledge Graph context via KùzuDB graph service (multi-hop Cypher)
+  //    Falls back to JSON snapshot if graph service is unavailable.
   try {
-    const { findConnectedSubgraphFromSnapshot } = await import("./graph-snapshot.js");
-    const graphFacts = await findConnectedSubgraphFromSnapshot(keywords);
+    const { queryGraph } = await import("./graph-client.js");
+    let graphFacts = await queryGraph(keywords, 2, 25);
+
+    // Fallback: snapshot keyword match
+    if (!graphFacts.length) {
+      const { findConnectedSubgraphFromSnapshot } = await import("./graph-snapshot.js");
+      graphFacts = await findConnectedSubgraphFromSnapshot(keywords);
+    }
+
     if (graphFacts.length > 0) {
       dedupedResults.graphContext = graphFacts;
       if (dedupedResults[0]) {

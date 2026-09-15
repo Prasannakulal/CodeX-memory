@@ -328,9 +328,14 @@ export function createMcpApp(options = {}) {
     }
   });
 
-  // GET /api/graph/stats: Knowledge Graph statistics (from JSON snapshot)
+  // GET /api/graph/stats: Knowledge Graph statistics (KùzuDB via graph-service, fallback to snapshot)
   app.get("/api/graph/stats", async (_req, res) => {
     try {
+      const { getGraphStats } = await import("./graph-client.js");
+      const liveStats = await getGraphStats();
+      if (liveStats) { res.json(liveStats); return; }
+
+      // Fallback: JSON snapshot
       const { readSnapshot } = await import("./graph-snapshot.js");
       const snapshot = await readSnapshot();
       res.json({
@@ -339,6 +344,7 @@ export function createMcpApp(options = {}) {
         entityTypes: snapshot.entityTypes || {},
         updatedAt: snapshot.updatedAt || null,
         available: snapshot.totalEntities > 0,
+        source: "snapshot",
       });
     } catch (err) {
       res.status(500).json({ error: err.message });
