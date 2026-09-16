@@ -195,17 +195,10 @@ export async function searchDocuments(query, topK = 5) {
     }
   }
 
-  // 7. Retrieve Knowledge Graph context via KùzuDB graph service (multi-hop Cypher)
-  //    Falls back to JSON snapshot if graph service is unavailable.
+  // 7. Retrieve Knowledge Graph context (multi-hop graph traversal in pure JS)
   try {
-    const { queryGraph } = await import("./graph-client.js");
-    let graphFacts = await queryGraph(keywords, 2, 25);
-
-    // Fallback: snapshot keyword match
-    if (!graphFacts.length) {
-      const { findConnectedSubgraphFromSnapshot } = await import("./graph-snapshot.js");
-      graphFacts = await findConnectedSubgraphFromSnapshot(keywords);
-    }
+    const { findConnectedSubgraph } = await import("./graph.js");
+    const graphFacts = await findConnectedSubgraph(keywords, 2, 25);
 
     if (graphFacts.length > 0) {
       dedupedResults.graphContext = graphFacts;

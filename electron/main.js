@@ -19,7 +19,6 @@ const execOptions = {
 };
 
 const workerServices = [
-  { name: "graph-service",  script: "src/graph-service.js" },  // KùzuDB — must be system node, not utilityProcess
   { name: "worker",         script: "src/worker.js" },
   { name: "watcher",        script: "src/watcher.js" },
   { name: "metrics-server", script: "src/metrics-server.js" },

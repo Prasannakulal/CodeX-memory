@@ -40,32 +40,14 @@ export async function ingestFile(filePath, { database, embed = embedText }) {
 
   // Extract and store knowledge graph entities & relationships
   try {
-    const [{ extractGraphData }, { getGraphConnection, upsertEntity, addRelation, deleteDocumentGraph }, { mergeIntoSnapshot }] = await Promise.all([
+    const [{ extractGraphData }, { mergeIntoGraph }] = await Promise.all([
       import("./extractor.js"),
-      import("./graph-db.js"),
-      import("./graph-snapshot.js"),
+      import("./graph.js"),
     ]);
 
     const { entities, relations } = extractGraphData(text, filePath);
 
-    // 1. Write to KùzuDB (for full graph traversal, optional)
-    try {
-      const graphConn = await getGraphConnection();
-      if (graphConn) {
-        await deleteDocumentGraph(filePath, graphConn);
-        for (const entity of entities) {
-          await upsertEntity(entity, graphConn);
-        }
-        for (const rel of relations) {
-          await addRelation(rel.fromId, rel.toId, rel.relation, graphConn);
-        }
-      }
-    } catch (kuzuErr) {
-      console.warn(`[GraphRAG] KùzuDB write skipped for ${filePath}:`, kuzuErr.message);
-    }
-
-    // 2. Write JSON snapshot (used by HTTP server — no native addon needed)
-    const snapshotRelations = relations.map((r) => ({
+    const graphRelations = relations.map((r) => ({
       fromName: r.fromName || r.fromId,
       fromType: r.fromType || "Concept",
       fromSource: filePath,
@@ -74,8 +56,13 @@ export async function ingestFile(filePath, { database, embed = embedText }) {
       toType: r.toType || "Concept",
       toSource: filePath,
     }));
-    const snapshotEntities = entities.map((e) => ({ ...e, sourceFile: filePath }));
-    await mergeIntoSnapshot({ entities: snapshotEntities, relations: snapshotRelations, sourceFile: filePath });
+    const graphEntities = entities.map((e) => ({ ...e, sourceFile: filePath }));
+
+    await mergeIntoGraph({
+      entities: graphEntities,
+      relations: graphRelations,
+      sourceFile: filePath,
+    });
   } catch (err) {
     console.warn(`[GraphRAG] Note on graph extraction for ${filePath}:`, err.message);
   }

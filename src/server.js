@@ -328,49 +328,35 @@ export function createMcpApp(options = {}) {
     }
   });
 
-  // GET /api/graph/stats: Knowledge Graph statistics (KùzuDB via graph-service, fallback to snapshot)
+  // GET /api/graph/stats: Knowledge Graph statistics (In-memory graph engine)
   app.get("/api/graph/stats", async (_req, res) => {
     try {
-      const { getGraphStats } = await import("./graph-client.js");
-      const liveStats = await getGraphStats();
-      if (liveStats) { res.json(liveStats); return; }
-
-      // Fallback: JSON snapshot
-      const { readSnapshot } = await import("./graph-snapshot.js");
-      const snapshot = await readSnapshot();
-      res.json({
-        totalEntities: snapshot.totalEntities || 0,
-        totalRelations: snapshot.totalRelations || 0,
-        entityTypes: snapshot.entityTypes || {},
-        updatedAt: snapshot.updatedAt || null,
-        available: snapshot.totalEntities > 0,
-        source: "snapshot",
-      });
+      const { getGraphStats } = await import("./graph.js");
+      const stats = await getGraphStats();
+      res.json(stats);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // GET /api/graph/entities: Knowledge Graph entity list (from JSON snapshot)
+  // GET /api/graph/entities: Knowledge Graph entity list
   app.get("/api/graph/entities", async (req, res) => {
     try {
-      const { readSnapshot } = await import("./graph-snapshot.js");
+      const { getEntities } = await import("./graph.js");
       const limit = Number(req.query.limit) || 100;
-      const snapshot = await readSnapshot();
-      const entities = (snapshot.entities || []).slice(0, limit);
+      const entities = await getEntities(limit);
       res.json(entities);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // GET /api/graph/relations: Knowledge Graph relations list (from JSON snapshot)
+  // GET /api/graph/relations: Knowledge Graph relations list
   app.get("/api/graph/relations", async (req, res) => {
     try {
-      const { readSnapshot } = await import("./graph-snapshot.js");
+      const { getRelations } = await import("./graph.js");
       const limit = Number(req.query.limit) || 500;
-      const snapshot = await readSnapshot();
-      const relations = (snapshot.relations || []).slice(0, limit);
+      const relations = await getRelations(limit);
       res.json(relations);
     } catch (err) {
       res.status(500).json({ error: err.message });

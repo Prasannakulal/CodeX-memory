@@ -14,13 +14,8 @@ export async function deleteDocument(filePath, database) {
   );
 
   try {
-    const { deleteDocumentGraph } = await import("./graph-db.js");
-    await deleteDocumentGraph(filePath);
-  } catch {}
-
-  try {
-    const { removeFromSnapshot } = await import("./graph-snapshot.js");
-    await removeFromSnapshot(filePath);
+    const { removeFromGraph } = await import("./graph.js");
+    await removeFromGraph(filePath);
   } catch {}
 
   console.log(`Deleted indexed chunks for ${filePath}`);

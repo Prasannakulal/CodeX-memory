@@ -13,7 +13,12 @@ import config from "./config.js";
 
 const connection = new IORedis(config.redis.url, {
   maxRetriesPerRequest: null,
+  retryStrategy(times) {
+    if (times > 3) return 10000;
+    return Math.min(times * 500, 3000);
+  },
 });
+connection.on("error", () => {}); // Prevent unhandled ECONNREFUSED
 
 const deadLetterQueue = new Queue("document-ingestion-dlq", { connection });
 
